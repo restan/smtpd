@@ -1,4 +1,6 @@
 require 'gserver'
+require 'mail'
+
 
 class SmtpServer < GServer
 
@@ -8,7 +10,13 @@ class SmtpServer < GServer
   end
 
   def process_raw_message(from, to, raw_message)
-    puts "New message from #{from} to: #{to.join(',')}"
+    message = Mail.read_from_string(raw_message)
+    process_message(from, to, message)
+  end
+
+  def process_message(from, to, message)
+    puts "Received message from: #{from}, to: #{to.join(',')}"
+    puts message.body
   end
 end
 
