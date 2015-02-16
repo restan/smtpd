@@ -75,9 +75,11 @@ class SmtpChannel
     command = line[/\w+/].upcase
     arg = line[command.size..-1].strip
     method = "smtp_#{command}".to_sym
-    if respond_to? method, true
+    if command != "HELO" && @greeting.nil?
+      push "503 Error: send HELO first"
+    elsif respond_to? method, true
       status = send method, arg
-      push status unless status.empty?
+      push status
     else
       push "502 Error: command \"#{command}\" not implemented"
     end
@@ -98,7 +100,7 @@ class SmtpChannel
 
   def smtp_HELO(arg)
     return "501 Syntax: HELO hostname" if arg.empty?
-    return "503 Duplicate HELO/EHLO" if @greeting
+    return "503 Error: duplicate HELO command" if @greeting
     @greeting = arg
     "250 #{fqdn}"
   end
@@ -106,7 +108,7 @@ class SmtpChannel
   def smtp_MAIL(arg)
     address = getaddr("FROM:", arg)
     return "501 Syntax: MAIL FROM:<address>" if address.empty?
-    return "503 Error: nested MAIL command" unless @from.nil?
+    return "503 Error: duplicate MAIL command" unless @from.nil?
     @from = address
     "250 Ok"
   end
