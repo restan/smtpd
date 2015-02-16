@@ -28,7 +28,8 @@ class SmtpChannel
     @io = io
     @stdlog = server.stdlog
     @state = :command
-    @terminator = "\r\n"
+    @read_terminator = "\r\n"
+    @push_terminator = "\r\n"
     @greeting = nil
     @from = nil
     @to = []
@@ -50,9 +51,9 @@ class SmtpChannel
     line = ""
     loop do
       IO.select([@io])
-      data = @io.gets(@terminator)
-      line << data.chomp(@terminator)
-      break if data.end_with? @terminator
+      data = @io.gets(@read_terminator)
+      line << data.chomp(@read_terminator)
+      break if data.end_with? @read_terminator
     end
     line.strip!
     log "<<<", line
@@ -92,7 +93,7 @@ class SmtpChannel
 
   def push(line)
     log ">>>", line
-    @io.print line, @terminator
+    @io.print line, @push_terminator
   end
 
   def smtp_HELO(arg)
@@ -128,7 +129,7 @@ class SmtpChannel
     return "501 Syntax: DATA" unless arg.empty?
     return "503 Error: need RCPT command" if @to.empty?
     @state = :data
-    @terminator = "\r\n.\r\n"
+    @read_terminator = "\r\n.\r\n"
     "354 End data with <CR><LF>.<CR><LF>"
   end
 
@@ -140,7 +141,7 @@ class SmtpChannel
 
   def reset
     @state = :command
-    @terminator = "\r\n"
+    @read_terminator = "\r\n"
     @from = nil
     @to = []
     @data = ""
