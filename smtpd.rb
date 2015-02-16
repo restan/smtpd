@@ -5,7 +5,7 @@ require 'mail'
 class SmtpServer < GServer
 
   def serve(io)
-    channel = SmtpChannel.new(self, io, @debug)
+    channel = SmtpChannel.new(self, io)
     channel.handle_connection
   end
 
@@ -15,7 +15,7 @@ class SmtpServer < GServer
   end
 
   def process_message(from, to, message)
-    puts "Received message from: #{from}, to: #{to.join(',')}"
+    puts "Received message from: #{from}, to: #{to.join(', ')}"
     puts message.body
   end
 end
@@ -23,10 +23,10 @@ end
 
 class SmtpChannel
   
-  def initialize(server, io, debug)
+  def initialize(server, io)
     @server = server
     @io = io
-    @debug = debug
+    @stdlog = server.stdlog
     @state = :command
     @terminator = "\r\n"
     @greeting = nil
@@ -35,7 +35,7 @@ class SmtpChannel
   end
 
   def handle_connection
-    push "220 #{fqdn} SMTP TempMail"
+    push "220 #{fqdn} SMTP"
     loop do
       line = get_line
       process_line(line)
@@ -55,7 +55,7 @@ class SmtpChannel
       break if data.end_with? @terminator
     end
     line.strip!
-    log "<<< #{line}"
+    log "<<<", line
     line
   end
 
@@ -91,7 +91,7 @@ class SmtpChannel
   end
 
   def push(line)
-    log ">>> #{line}"
+    log ">>>", line
     @io.print line, @terminator
   end
 
@@ -151,8 +151,11 @@ class SmtpChannel
     arg[keyword.size..-1].gsub(/<(.*)>/, '\1').strip
   end
 
-  def log(msg)
-    puts msg if @debug
+  def log(prefix, msg)
+    if @stdlog
+      @stdlog.puts(msg.gsub(/^/, "[#{Time.new.ctime}] #{self.class} #{prefix} "))
+      @stdlog.flush
+    end
   end
 
   def fqdn
