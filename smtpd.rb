@@ -133,6 +133,11 @@ class SmtpChannel
     "354 End data with <CR><LF>.<CR><LF>"
   end
 
+  def smtp_NOOP(arg)
+    return "501 Syntax: NOOP" unless arg.empty?
+    "250 Ok"
+  end
+
   def smtp_QUIT(arg)
     return "501 Syntax: QUIT" unless arg.empty?
     @state = :quit
