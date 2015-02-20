@@ -5,4 +5,5 @@ gem "mail", ">= 2.6.3"
 
 group :test do
   gem "mocha", ">= 1.1.0"
+  gem "simplecov", ">=0.9.2"
 end

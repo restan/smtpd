@@ -139,6 +139,8 @@ module Smtpd
       arg[keyword.size..-1].gsub(/<(.*)>/, '\1').strip
     end
   
+    # :nocov:
+    
     def log(prefix, msg)
       if @stdlog
         @stdlog.puts(msg.gsub(/^/, "[#{Time.new.ctime}] #{self.class} #{prefix} "))
@@ -149,5 +151,7 @@ module Smtpd
     def fqdn
       @fqdn ||= Socket.gethostbyname(Socket.gethostname).first
     end
+    
+    # :nocov:
   end
 end

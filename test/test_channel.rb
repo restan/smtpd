@@ -1,3 +1,6 @@
+require 'simplecov'
+SimpleCov.start
+
 require 'socket'
 require 'test/unit'
 require 'mocha/test_unit'
