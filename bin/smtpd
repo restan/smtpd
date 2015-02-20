@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+
+require 'smtpd/runner'
+
+runner = Smtpd::Runner.new(ARGV)
+runner.run
