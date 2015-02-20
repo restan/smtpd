@@ -18,9 +18,11 @@ module Smtpd
       loop do
         line = get_line
         process_line(line)
-        break if (@state == :quit || @io.closed?)
+        break if @state == :quit
       end
       @io.close
+    rescue Errno::EPIPE
+      # client disconnected unexpectedly
     end
   
     private
