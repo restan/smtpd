@@ -30,7 +30,7 @@ class TestChannel < Test::Unit::TestCase
   end
   
   def teardown
-    @server_thread.join
+    @server_thread.terminate if @server_thread.join(0).nil?
     @io.close unless @io.closed?
   end
   
@@ -174,5 +174,73 @@ class TestChannel < Test::Unit::TestCase
     push "HELO example2.com\r\n"
     @io.close
     fail until @server_thread.join(1)
+  end
+  
+  def test_syntax_errors
+    @server.expects(:process_raw_message).with("alice@example2.com", ["bob@example.com"], "some message")
+    assert_next_line "220 example.com SMTP\r\n"
+    push "\r\n"
+    assert_next_line "500 Error: bad syntax\r\n"
+    push "HELO\r\n"
+    assert_next_line "501 Syntax: HELO hostname\r\n"
+    push "HELO example2.com\r\n"
+    assert_next_line "250 example.com\r\n"
+    push "MAIL alice@example2.com\r\n"
+    assert_next_line "501 Syntax: MAIL FROM:<address>\r\n"
+    push "MAIL FROM: alice@example2.com\r\n"
+    assert_next_line "250 Ok\r\n"
+    push "RCPT bob@example.com\r\n"
+    assert_next_line "501 Syntax: RCPT TO: <address>\r\n"
+    push "RCPT TO: bob@example.com\r\n"
+    assert_next_line "250 Ok\r\n"
+    push "RSET arg\r\n"
+    assert_next_line "501 Syntax: RSET\r\n"
+    push "NOOP arg\r\n"
+    assert_next_line "501 Syntax: NOOP\r\n"
+    push "QUIT arg\r\n"
+    assert_next_line "501 Syntax: QUIT\r\n"
+    push "DATA arg\r\n"
+    assert_next_line "501 Syntax: DATA\r\n"
+    push "DATA\r\n"
+    assert_next_line "354 End data with <CR><LF>.<CR><LF>\r\n"
+    push "some message\r\n.\r\n"
+    assert_next_line "250 Ok\r\n"
+    push "QUIT\r\n"
+    assert_next_line "221 Bye\r\n"
+  end
+  
+  def test_wrong_command_sequence
+    @server.expects(:process_raw_message).with("alice@example2.com", ["bob@example.com"], "some message")
+    assert_next_line "220 example.com SMTP\r\n"
+    push "MAIL FROM: alice@example2.com\r\n"
+    assert_next_line "503 Error: send HELO first\r\n"
+    push "HELO example2.com\r\n"
+    assert_next_line "250 example.com\r\n"
+    push "DATA\r\n"
+    assert_next_line "503 Error: need RCPT command\r\n"
+    push "RCPT TO: bob@example.com\r\n"
+    assert_next_line "503 Error: need MAIL command\r\n"
+    push "MAIL FROM: alice@example2.com\r\n"
+    assert_next_line "250 Ok\r\n"
+    push "MAIL FROM: tom@example2.com\r\n"
+    assert_next_line "503 Error: duplicate MAIL command\r\n"
+    push "RCPT TO: bob@example.com\r\n"
+    assert_next_line "250 Ok\r\n"
+    push "DATA\r\n"
+    assert_next_line "354 End data with <CR><LF>.<CR><LF>\r\n"
+    push "some message\r\n.\r\n"
+    assert_next_line "250 Ok\r\n"
+    push "QUIT\r\n"
+    assert_next_line "221 Bye\r\n"
+  end
+  
+  def test_command_not_implemented
+    assert_next_line "220 example.com SMTP\r\n"
+    push "HELO example2.com\r\n"
+    assert_next_line "250 example.com\r\n"
+    push "BLAH arg\r\n"
+    assert_next_line "502 Error: command \"BLAH\" not implemented\r\n"
+    push "QUIT\r\n"
+    assert_next_line "221 Bye\r\n"
   end
 end
